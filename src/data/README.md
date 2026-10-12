@@ -147,7 +147,6 @@ Lưu các vi phạm liên quan đến việc mượn sách.
 | `id` | Khóa chính |
 | `user_id` | Người vi phạm |
 | `loan_id` | Lượt mượn liên quan |
-| `type` | Loại vi phạm |
 | `description` | Mô tả |
 | `created_at` | Thời điểm tạo |
 | `resolved_at` | Thời điểm xử lý xong |
