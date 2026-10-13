@@ -57,8 +57,11 @@ export async function submitBorrowRequest(book, user) {
   }
 
   try {
-    // data.js sends the request to the backend API.
-    // The backend checks duplicate requests and other rules.
+     // createBorrowRequest() calls the API function in data.js.
+  // If the API returns an unsuccessful HTTP status, data.js
+  // throws an ApiError using `throw new ApiError(...)`.
+  // That error travels back here and jumps to the catch block.
+  // So the success return below only runs if the call succeeds.
     const result = await createBorrowRequest({
       bookId: book.id
     });
@@ -69,6 +72,7 @@ export async function submitBorrowRequest(book, user) {
       borrowRequest: result.borrowRequest
     };
   } catch (error) {
+     // Handles errors thrown by data.js, including API errors.
     return {
       success: false,
       message: error.message || "Failed to create borrow request."
