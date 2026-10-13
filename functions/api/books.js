@@ -1,5 +1,5 @@
-import { getDatabase } from "../_lib/db.js";
-import { json, options } from "../_lib/http.js";
+import { getDatabase } from "../lib/db.js";
+import { json, options } from "../lib/http.js";
 
 const ALLOWED_STATUSES = new Set([
   "AVAILABLE",
