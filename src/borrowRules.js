@@ -1,30 +1,53 @@
-const book = {
-  id: "book-01",
-  ownerId: "user-02",
-  status: "AVAILABLE"
-};
 
-const userId = "user-01";
+import { createBorrowRequest } from "./data.js";
 
-export function validateBorrowRequest(book, userId) {
+export function validateBorrowRequest(book, user) {
   if (!book) {
-    return { valid: false, message: "Book not found." };
+    return {
+      valid: false,
+      message: "Book not found."
+    };
+  }
+
+  if (!user) {
+    return {
+      valid: false,
+      message: "User not found."
+    };
+  }
+
+  if (
+    user.account_status !== "ACTIVE" ||
+    user.late_return_count >= 3
+  ) {
+    return {
+      valid: false,
+      message: "Your account is locked."
+    };
   }
 
   if (book.status !== "AVAILABLE") {
-    return { valid: false, message: "Book is not available." };
+    return {
+      valid: false,
+      message: "Book is not available."
+    };
   }
 
-  if (book.ownerId === userId) {
-    return { valid: false, message: "You cannot borrow your own book." };
+  if (book.owner_user_id === user.id) {
+    return {
+      valid: false,
+      message: "You cannot borrow your own book."
+    };
   }
 
-  return { valid: true, message: "Borrow request is valid." };
+  return {
+    valid: true,
+    message: "Borrow request is valid."
+  };
 }
 
-export async function createBorrowRequest(book, userId) {
-    
-  const validation = validateBorrowRequest(book, userId);
+export async function submitBorrowRequest(book, user) {
+  const validation = validateBorrowRequest(book, user);
 
   if (!validation.valid) {
     return {
@@ -33,29 +56,22 @@ export async function createBorrowRequest(book, userId) {
     };
   }
 
-  const response = await fetch("/api/borrow-requests", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      bookId: book.id,
-      borrowerId: userId
-    })
-  });
+  try {
+    // data.js sends the request to the backend API.
+    // The backend checks duplicate requests and other rules.
+    const result = await createBorrowRequest({
+      bookId: book.id
+    });
 
-  const result = await response.json();
-
-  if (!response.ok) {
+    return {
+      success: true,
+      message: result.message || "Borrow request created successfully.",
+      borrowRequest: result.borrowRequest
+    };
+  } catch (error) {
     return {
       success: false,
-      message: result.message || "Failed to create borrow request."
+      message: error.message || "Failed to create borrow request."
     };
   }
-
-  return {
-    success: true,
-    message: "Borrow request created.",
-    borrowRequest: result
-  };
 }
