@@ -24,4 +24,13 @@ jobs:
           python-version: "3.x"
 
       - name: Kiểm mốc
-        run: python scripts/kiem_moc.py
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            BRANCH="${GITHUB_HEAD_REF}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+
+          MOC="${BRANCH##*/}"
+          python scripts/kiem_moc.py "$MOC"
