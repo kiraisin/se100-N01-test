@@ -1,0 +1,61 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mượn sách</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 40rem;
+    margin: 1rem auto;
+    padding: 0 1rem;
+  }
+  #borrow-form label {
+    display: block;
+    padding: 0.4rem 0;
+  }
+  #borrow-form button {
+    margin-top: 0.75rem;
+  }
+</style>
+
+<h1>Mượn sách</h1>
+<p>Đang mượn với tư cách: <code id="current-user"></code></p>
+<form id="borrow-form"><p>Đang tải…</p></form>
+<p id="message" role="status"></p>
+
+<script type="module">
+  import { renderBookForm, setSubmitting } from "/client/bookForm.js";
+  // Chưa có đăng nhập: dùng user test.
+  const CURRENT_USER_ID = "22222222-2222-2222-2222-222222222222";
+  const form = document.getElementById("borrow-form");
+  const message = document.getElementById("message");
+  document.getElementById("current-user").textContent = CURRENT_USER_ID;
+
+  // Đoạn ghép tạm của phần 1.
+  async function borrow(data, bookId) {
+    setSubmitting(form, true);
+    message.textContent = "";
+    try {
+      const result = await data.createBorrowRequest({
+        bookId,
+        userId: CURRENT_USER_ID,
+      });
+      const request = result.borrowRequest;
+      message.textContent = `${result.message}. Mã yêu cầu: ${request.id} — Trạng thái: ${request.status}`;
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      setSubmitting(form, false);
+    }
+  }
+
+  try {
+    // Nạp data.js trong try
+    const data = await import("/data/data.js");
+    const { books } = await data.getAvailableBooks();
+    renderBookForm(form, books, (bookId) => borrow(data, bookId));
+  } catch {
+    form.replaceChildren();
+    message.textContent = "Không tải được danh sách sách.";
+  }
+</script>
