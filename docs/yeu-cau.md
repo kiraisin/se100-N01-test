@@ -2,7 +2,7 @@
 
 ## Tác nhân
 
-| Tác nhân | Là ai | Muốn gì từ hệ thống |
+| Ai làm | Là ai | Muốn gì từ hệ thống |
 |---|---|---|
 | Sinh viên mượn sách | Sinh viên muốn mượn sách từ sinh viên khác | Tìm sách phù hợp và gửi yêu cầu mượn |
 | Sinh viên cho mượn sách | Sinh viên đăng ký sách mình sở hữu | Quản lý sách và xử lý yêu cầu mượn |
