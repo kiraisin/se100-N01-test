@@ -1,0 +1,36 @@
+{
+  "name": "se100-n01",
+  "version": "1.0.0",
+  "description": "> Hệ thống hỗ trợ sinh viên đăng ký và chia sẻ sách cá nhân để những sinh viên khác có thể tìm kiếm và gửi yêu cầu mượn sách.\r > Sinh viên có thể đăng ký sách mình đang sở hữu, tìm kiếm sách và gửi yêu cầu mượn sách từ sinh viên khác.\r > Chủ sở hữu sách có thể xem và xử lý các yêu cầu mượn đối với sách của mình.\r > Hệ thống hỗ trợ theo dõi trạng thái sách và thông tin liên quan đến việc mượn và trả sách.\r > Hệ thống không cho phép sinh viên mượn sách đang không khả dụng hoặc thực hiện các thao tác trái với trạng thái hiện tại của sách.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "wrangler pages dev src",
+    "deploy": "wrangler pages deploy src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uit-se100-2026-hk1/se100-N01.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/uit-se100-2026-hk1/se100-N01/issues"
+  },
+  "homepage": "https://github.com/uit-se100-2026-hk1/se100-N01#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "approve": "^0.0.12",
+    "esbuild": "^0.28.2",
+    "scripts": "^0.1.0",
+    "workerd": "^1.20261006.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.149.0"
+  }
+}
