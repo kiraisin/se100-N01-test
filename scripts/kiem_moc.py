@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-Kiểm mốc tầng 1 — SE100.
+Kiểm nội dung theo mốc M0–M5 — SE100.
 
-Chạy:  python scripts/kiem_moc.py M2
-       python scripts/kiem_moc.py            (tự đoán mốc từ tên nhánh moc/Mn)
+Chạy tay:  python scripts/kiem_moc.py M3            (kiểm kho hiện tại)
+           python scripts/kiem_moc.py M3 <thư mục>  (kiểm kho khác)
+
+Kiểm gói (scripts/kiem_goi.py) gọi hàm chay_moc() cho các mốc ứng với gói:
+Gói 2 = M0 + M1, Gói 3 = M2, Gói 4 = M3, Gói 5 = M4, Gói 6 = M5.
 
 Mọi kiểm tra là tất định, không dùng AI. Đầu ra: danh sách ✅/❌ và exit code
-0 nếu tất cả ✅. Sinh viên đọc log này để tự sửa trước hạn.
+0 nếu tất cả ✅.
 """
 import os
 import re
@@ -41,6 +44,12 @@ def git(*args):
         return subprocess.check_output(["git", *args], cwd=GOC, text=True, stderr=subprocess.DEVNULL)
     except Exception:
         return ""
+
+
+def so_thanh_vien():
+    """Số dòng thành viên (mã Nxx-X) trong THANH-VIEN.md; 0 nếu chưa có."""
+    tv = doc("THANH-VIEN.md") or ""
+    return len(set(re.findall(r"^\|\s*(N\d\d-[A-Z])\s*\|", tv, re.M)))
 
 
 def ten_lop_trong_class_mmd(text):
@@ -78,7 +87,8 @@ def loi_goi_trong_seq(text):
 
 
 def _kiem_so_bo(p):
-    dau = (p.read_text(encoding="utf-8").strip().splitlines() or [""])[0].strip()
+    dong = [l.strip() for l in p.read_text(encoding="utf-8").splitlines() if l.strip() and not l.strip().startswith("%%") and not l.strip().startswith("---")]
+    dau = (dong or [""])[0]
     ok = bool(re.match(r"^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|C4Context|C4Container|erDiagram)", dau))
     return ok, "" if ok else f"dòng đầu không phải loại sơ đồ Mermaid: '{dau[:40]}'"
 
@@ -110,42 +120,20 @@ def mermaid_parse_duoc(path):
         return False, (dong[0] if dong else err.strip().splitlines()[-1] if err.strip() else "mmdc báo lỗi")[:200]
 
 
-# ---------- kiểm chung mọi mốc ----------
-
-def kiem_chung(moc):
-    # bản phản tư
-    pt = doc(f"phan-tu/{moc}.md")
-    if pt is None:
-        ghi(False, f"phan-tu/{moc}.md tồn tại", "thiếu bản phản tư")
-    else:
-        hash_ = re.findall(r"\b[0-9a-f]{7,40}\b", pt)
-        ghi(len(hash_) >= 1, f"phan-tu/{moc}.md trỏ tới ít nhất 1 commit",
-            "" if hash_ else "không thấy mã commit 7 ký tự nào — mọi khẳng định phải có hash")
-        nguong = 40 if moc == "M0" else 120
-        ghi(len(pt.split()) >= nguong, f"phan-tu/{moc}.md dài ≥ {nguong} từ", f"hiện {len(pt.split())} từ")
-
-    # bảng phản hồi cáo buộc từ M2 (chỉ cảnh báo, vì có thể chưa nhận cáo buộc)
-    if moc in ("M2", "M3", "M4", "M5"):
-        ph = doc(f"phan-tu/{moc}-phan-hoi.md")
-        if ph is None:
-            ghi(True, f"phan-tu/{moc}-phan-hoi.md (nộp sau khi nhận cáo buộc)", "chưa có — sẽ kiểm lại sau")
-
-    # ai-log
-    ai = list((GOC / "ai-log").glob(f"*{moc}*")) if (GOC / "ai-log").exists() else []
-    ghi(len(ai) >= 1, f"ai-log/ có bản ghi cho {moc}", "" if ai else "thiếu bản ghi hội thoại với agent")
-
-
 # ---------- từng mốc ----------
 
 def kiem_M0():
     readme = doc("README.md") or ""
-    dong = [d for d in readme.splitlines() if d.strip() and not d.strip().startswith(("#", "|", ">", "-", "`"))]
-    ghi(len(dong) >= 5, "README có ≥ 5 dòng mô tả hệ thống", f"hiện {len(dong)} dòng văn xuôi")
+    # phần mô tả hệ thống: từ đầu tệp tới tiêu đề "## " đầu tiên
+    dau = re.split(r"^## ", readme, maxsplit=1, flags=re.M)[0]
+    dong = [d for d in dau.splitlines() if d.strip() and not d.strip().startswith(("#", "|", ">", "-", "`"))]
+    ghi(len(dong) >= 5, "README có ≥ 5 dòng mô tả hệ thống (trước tiêu đề ## đầu tiên)", f"hiện {len(dong)} dòng văn xuôi")
     ghi("Xoá dòng này" not in readme, "README đã xoá hướng dẫn mẫu", "")
 
-    tac_gia = set(a.strip() for a in git("log", "--format=%ae").splitlines() if a.strip())
-    ghi(len(tac_gia) >= 4, f"Đủ 4 thành viên có commit (thấy {len(tac_gia)} email)",
-        "" if len(tac_gia) >= 4 else "mỗi người phải tự commit ít nhất một lần bằng tài khoản của mình")
+    can = so_thanh_vien() or 4
+    tac_gia = set(a.strip().lower() for a in git("log", "--format=%ae").splitlines() if a.strip())
+    ghi(len(tac_gia) >= can, f"Đủ {can} thành viên có commit (thấy {len(tac_gia)} tài khoản tác giả)",
+        "" if len(tac_gia) >= can else "mỗi người phải tự commit ít nhất một lần bằng tài khoản của mình")
 
     ton_tai("docs/cau-hoi-khach-hang.md", "Có 3 câu hỏi cho khách hàng")
     ch = doc("docs/cau-hoi-khach-hang.md") or ""
@@ -162,7 +150,7 @@ def kiem_M1():
     nfr = [d for d in yc.splitlines() if re.match(r"^\|\s*NFR-\d+", d)]
     ghi(len(nfr) >= 3, f"Có ≥ 3 yêu cầu phi chức năng (thấy {len(nfr)})")
     # mỗi NFR phải có số + đơn vị
-    don_vi = r"(ms|s|giây|phút|giờ|ngày|%|người|req|yêu cầu|MB|GB|KB|TPS|rps|/s|/giây|lần|bản ghi|dòng|đồng)"
+    don_vi = r"(ms|s|giây|phút|giờ|ngày|%|người|req|yêu cầu|MB|GB|KB|TPS|rps|/s|/giây|lần|lượt|bước|thao tác|bản ghi|dòng|đồng)"
     thieu = []
     for d in nfr:
         o = [x.strip() for x in d.strip("|").split("|")]
@@ -200,8 +188,23 @@ def kiem_M2():
         ok, loi = mermaid_parse_duoc(f"diagrams/{p.name}")
         ghi(ok, f"{p.name} parse được", loi)
 
-    pr = git("log", "--oneline", "--merges", "-5")
-    ghi(True, "Pull request review chéo — kiểm tay", "")
+
+def doi_chieu_seq_class(lop, pt):
+    """ĐỐI CHIẾU CHÉO: lớp trong sequence phải có trong class diagram."""
+    seqs = sorted((GOC / "diagrams").glob("seq-*.mmd"))
+    thieu_lop, thieu_pt = set(), []
+    for p in seqs:
+        t = p.read_text(encoding="utf-8")
+        for part in participant_trong_seq(t):
+            if part not in lop:
+                thieu_lop.add(f"{part} ({p.name})")
+        for nguon, dich, ph in loi_goi_trong_seq(t):
+            if dich in lop and ph not in pt.get(dich, set()) and ph != dich:
+                thieu_pt.append(f"{dich}.{ph}() ({p.name})")
+    ghi(not thieu_lop, "Mọi participant trong sequence diagram đều là lớp trong class.mmd",
+        "" if not thieu_lop else "không có trong sơ đồ lớp: " + ", ".join(sorted(thieu_lop)))
+    ghi(not thieu_pt, "Mọi phương thức được gọi trong sequence đều tồn tại trong lớp đích",
+        "" if not thieu_pt else "gọi phương thức không tồn tại: " + ", ".join(thieu_pt[:8]))
 
 
 def kiem_M3():
@@ -219,21 +222,7 @@ def kiem_M3():
         "Không quá nửa số lớp là 'túi dữ liệu' không có phương thức",
         "" if len(tui_du_lieu) <= len(lop) // 2 else f"lớp không có hành vi: {', '.join(sorted(tui_du_lieu))}")
 
-    # ---- ĐỐI CHIẾU CHÉO: lớp trong sequence phải có trong class diagram ----
-    seqs = sorted((GOC / "diagrams").glob("seq-*.mmd"))
-    thieu_lop, thieu_pt = set(), []
-    for p in seqs:
-        t = p.read_text(encoding="utf-8")
-        for part in participant_trong_seq(t):
-            if part not in lop:
-                thieu_lop.add(f"{part} ({p.name})")
-        for nguon, dich, ph in loi_goi_trong_seq(t):
-            if dich in lop and ph not in pt.get(dich, set()) and ph != dich:
-                thieu_pt.append(f"{dich}.{ph}() ({p.name})")
-    ghi(not thieu_lop, "Mọi participant trong sequence diagram đều là lớp trong class.mmd",
-        "" if not thieu_lop else "không có trong sơ đồ lớp: " + ", ".join(sorted(thieu_lop)))
-    ghi(not thieu_pt, "Mọi phương thức được gọi trong sequence đều tồn tại trong lớp đích",
-        "" if not thieu_pt else "gọi phương thức không tồn tại: " + ", ".join(thieu_pt[:8]))
+    doi_chieu_seq_class(lop, pt)
 
     # ---- TRUY VẾT: mỗi lớp phải được nhắc trong ít nhất một đặc tả hoặc yêu cầu ----
     van_ban = " ".join((GOC / "docs" / f).read_text(encoding="utf-8")
@@ -284,12 +273,22 @@ def kiem_M5():
     else:
         ghi(False, "README có URL 'Bản chạy:' đã điền", "chưa điền URL")
 
-    wf = list((GOC / ".github" / "workflows").glob("*.yml"))
-    co_pipeline_rieng = any("kiem-moc" not in p.name for p in wf)
-    ghi(co_pipeline_rieng, "Có workflow CI riêng của nhóm ngoài kiem-moc.yml",
-        "" if co_pipeline_rieng else "thêm ít nhất một workflow: lint / test / build / deploy")
+    wf = list((GOC / ".github" / "workflows").glob("*.yml")) + list((GOC / ".github" / "workflows").glob("*.yaml"))
+    co_pipeline_rieng = any(p.stem not in WORKFLOW_CUA_LOP for p in wf)
+    ghi(co_pipeline_rieng, "Có workflow CI riêng của nhóm ngoài kiem-pr.yml, kiem-goi.yml",
+        "" if co_pipeline_rieng else "thêm ít nhất một workflow: lint / test / build / deploy (mẫu: vi-du-ci.yml.tat)")
 
-    ton_tai("docs/tac-dong-vong3.md", "Có bảng phân tích tác động vòng 3")
+    # sơ đồ khớp mã: lớp trong class.mmd có trong src/, participant có trong class.mmd
+    cls = doc("diagrams/class.mmd") or ""
+    lop = ten_lop_trong_class_mmd(cls)
+    ma = van_ban_src()
+    if not lop:
+        ghi(False, "Mọi lớp trong diagrams/class.mmd có trong src/", "không đọc được lớp nào trong diagrams/class.mmd")
+    else:
+        vang = sorted(l for l in lop if not re.search(r"\b" + re.escape(l) + r"\b", ma))
+        ghi(not vang, "Mọi lớp trong diagrams/class.mmd có trong src/",
+            "" if not vang else "không thấy trong mã nguồn: " + ", ".join(vang))
+    doi_chieu_seq_class(lop, phuong_thuc_trong_class_mmd(cls))
 
     tl = doc("docs/trung-lap.md") or ""
     so_do = len(re.findall(r"\d+[.,]?\d*\s*%", tl))
@@ -297,36 +296,65 @@ def kiem_M5():
         "" if so_do >= 2 else f"thấy {so_do} con số % — cần đo lại bằng jscpd và ghi thêm")
 
 
+WORKFLOW_CUA_LOP = {"kiem-pr", "kiem-goi", "kiem-moc"}
+BO_QUA_SRC = {"node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", "target", "vendor"}
+
+
+def van_ban_src():
+    """Gộp nội dung các tệp văn bản trong src/ (bỏ README.md và thư mục phụ thuộc)."""
+    goc = GOC / "src"
+    phan = []
+    if not goc.exists():
+        return ""
+    for duong, thu_muc, tep in os.walk(goc):
+        thu_muc[:] = [d for d in thu_muc if d not in BO_QUA_SRC]
+        for ten in tep:
+            if ten == "README.md":
+                continue
+            p = Path(duong) / ten
+            try:
+                if p.stat().st_size > 1_000_000:
+                    continue
+                du = p.read_bytes()
+            except OSError:
+                continue
+            if b"\x00" in du[:4096]:
+                continue
+            phan.append(du.decode("utf-8", errors="ignore"))
+    return "\n".join(phan)
+
+
 # ---------- chạy ----------
 
-def doan_moc():
-    nhanh = os.environ.get("GITHUB_HEAD_REF") or git("rev-parse", "--abbrev-ref", "HEAD").strip()
-    m = re.search(r"moc/(M[0-5])", nhanh)
-    return m.group(1) if m else None
+KIEM = {"M0": kiem_M0, "M1": kiem_M1, "M2": kiem_M2, "M3": kiem_M3, "M4": kiem_M4, "M5": kiem_M5}
+
+
+def chay_moc(moc, goc=None):
+    """Chạy các kiểm của một mốc, trả về [(ok, ten, chi_tiet)]. Dùng được từ kiem_goi.py."""
+    global GOC, KQ
+    if goc is not None:
+        GOC = Path(goc).resolve()
+    KQ = []
+    KIEM[moc]()
+    return list(KQ)
 
 
 def main():
-    arg = sys.argv[1].strip().upper() if len(sys.argv) > 1 else ""
-    moc = arg if arg else doan_moc()
-    if moc not in {"M0", "M1", "M2", "M3", "M4", "M5"}:
-        print("Không xác định được mốc. Dùng: python scripts/kiem_moc.py M2  hoặc đặt tên nhánh moc/M2")
+    if len(sys.argv) < 2 or sys.argv[1].strip().upper() not in KIEM:
+        print("Dùng: python scripts/kiem_moc.py M0|M1|M2|M3|M4|M5 [thư mục kho]")
         sys.exit(2)
+    moc = sys.argv[1].strip().upper()
+    kq = chay_moc(moc, sys.argv[2] if len(sys.argv) > 2 else None)
 
     print(f"\n=== KIỂM MỐC {moc} ===\n")
-    {"M0": kiem_M0, "M1": kiem_M1, "M2": kiem_M2, "M3": kiem_M3, "M4": kiem_M4, "M5": kiem_M5}[moc]()
-    if moc != "M0":
-        kiem_chung(moc)
-    else:
-        kiem_chung(moc)
-
-    dat = sum(1 for ok, *_ in KQ if ok)
-    for ok, ten, ct in KQ:
+    dat = sum(1 for ok, *_ in kq if ok)
+    for ok, ten, ct in kq:
         print(("✅ " if ok else "❌ ") + ten + (f"\n     ↳ {ct}" if ct and not ok else ""))
-    print(f"\n{dat}/{len(KQ)} đạt.")
-    if dat < len(KQ):
-        print("Mốc CHƯA đạt. Sửa các ❌ rồi push lại — không cần chờ giảng viên.")
+    print(f"\n{dat}/{len(kq)} đạt.")
+    if dat < len(kq):
+        print("Còn mục chưa đạt. Sửa các ❌ rồi chạy lại.")
         sys.exit(1)
-    print("Mốc đạt cổng tầng 1. Phần điểm nằm ở bản phản tư.")
+    print("Đạt các kiểm tự động của mốc này.")
 
 
 if __name__ == "__main__":
