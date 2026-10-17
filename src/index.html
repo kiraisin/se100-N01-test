@@ -54,8 +54,10 @@
     const data = await import("/data/data.js");
     const { books } = await data.getAvailableBooks();
     renderBookForm(form, books, (bookId) => borrow(data, bookId));
-  } catch {
+    } catch (error) {
+    console.error("Failed to load books:", error);
     form.replaceChildren();
-    message.textContent = "Không tải được danh sách sách.";
+    message.textContent =
+      `Không tải được danh sách sách: ${error.message}`;
   }
 </script>
